@@ -1,52 +1,64 @@
 package com.Lalit.simpleWebApp.service;
 
-import com.Lalit.simpleWebApp.model.Product;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import com.Lalit.simpleWebApp.model.Product;
+import com.Lalit.simpleWebApp.repository.ProductRepo;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.util.List;
+
 
 @Service
 public class ProductService {
 
-    List<Product> products = new ArrayList<>(Arrays.asList(
-            new Product(101, "IPhone", 50000),
-            new Product(102, "Canon Camera", 600000),
-            new Product(103, "Asus VivoBook", 120000))
-    );
+    @Autowired
+    private ProductRepo repo;
 
-    public List<Product> getProduct(){
-        return products;
+    public List<Product> getAllProducts() {
+        return repo.findAll();
     }
 
-    public Product getById(int id) {
-        return products.stream()
-                .filter(p -> p.getProdId()==id)
-                .findFirst().orElse(new Product(100, "No Item", 0));
+    public Product getProductById(int id) {
+        return repo.findById(id).orElse(null);
     }
 
-    public void addProduct(Product product){
-        products.add(product);
-    }
-
-    public void updateProduct(Product prod) {
-        for(int i=0; i<products.size(); i++){
-            if(products.get(i).getProdId() == prod.getProdId()){
-                products.set(i, prod);
-                return;
-            }
+    public Product addProduct(Product product, MultipartFile imageFile) throws IOException {
+        if(imageFile!=null && !imageFile.isEmpty()) {
+            product.setImageName(imageFile.getOriginalFilename());
+            product.setImageType(imageFile.getContentType());
+            product.setImageData(imageFile.getBytes());
         }
+        return repo.save(product);
+    }
+
+    public Product updateProduct(int id, Product product, MultipartFile imageFile) throws IOException {
+        Product existing = repo.findById(id).orElseThrow(() -> new RuntimeException("Product not found " + id));
+        existing.setName(product.getName());
+        existing.setBrand(product.getBrand());
+        existing.setDescription(product.getDescription());
+        existing.setAvailable(product.isAvailable());
+        existing.setReleaseDate(product.getReleaseDate());
+        existing.setPrice(product.getPrice());
+        existing.setCategory(product.getCategory());
+        existing.setStockQuantity(product.getStockQuantity());
+        if(imageFile!=null && !imageFile.isEmpty()) {
+            existing.setImageData(imageFile.getBytes());
+            existing.setImageName(imageFile.getOriginalFilename());
+            existing.setImageType(imageFile.getContentType());
+        }
+        return repo.save(existing);
     }
 
     public void deleteProduct(int id) {
-        int idx = 0;
-        for(int i=0; i<products.size(); i++){
-            if(products.get(i).getProdId() == id){
-                idx = i;
-                break;
-            }
-        }
-        products.remove(products.get(idx));
+        repo.deleteById(id);
+    }
+
+
+
+    public List<Product> searchProducts(String keyword) {
+        return repo.searchProducts(keyword);
     }
 }
